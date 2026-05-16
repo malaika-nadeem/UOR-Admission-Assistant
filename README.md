@@ -26,6 +26,7 @@ University of Rasul (UOR) admissions — programs, eligibility, fees, and deadli
 
 ## 📌 Note
 This chatbot is for informational purposes only.
+Live chat here: https://uor-admission-assistant-jsbvbn9kpsaew6mooavfqm.streamlit.app/
 For official queries contact:
 - WhatsApp: 0370-1834828
 - Email: admission@putrasul.edu.pk
