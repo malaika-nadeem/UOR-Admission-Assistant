@@ -2,17 +2,47 @@ import streamlit as st
 from dotenv import load_dotenv
 import os
 from groq import Groq
+import requests
+from bs4 import BeautifulSoup
 
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+def scrape_uor_website():
+    pages = [
+        "https://uorm.edu.pk/",
+        "https://uorm.edu.pk/admissions/",
+        "https://uorm.edu.pk/fee-structure/",
+    ]
+    all_text = ""
+    for url in pages:
+        try:
+            page = requests.get(url, timeout=10)
+            soup = BeautifulSoup(page.content, "html.parser")
+            text = soup.get_text()
+            clean_text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+            all_text += f"\n\n--- Data from {url} ---\n{clean_text}"
+        except:
+            pass
+    # trim to avoid token limit
+    return all_text[:3000]
+
+if "website_data" not in st.session_state:
+    with st.spinner("Loading official UOR data..."):
+        st.session_state.website_data = scrape_uor_website()
+
 st.set_page_config(page_title="UOR Admission Assistant", page_icon="🎓")
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.image("logo.png", width=200)
 
 st.title("🎓UOR Admission Assistant")
-SYSTEM_PROMPT = """You are a helpful admission assistant for University of Rasul (UOR), Mandi Bahauddin.
+
+SYSTEM_PROMPT = f"""You are a helpful admission assistant for University of Rasul (UOR), Mandi Bahauddin.
 Answer students' questions based on this official information only:
+
+LIVE WEBSITE DATA:
+{st.session_state.website_data}
 
 CONTACT:
 - Address: 13-km Mandi-Sarai Alamgir Road, Rasul, District Mandi Bahauddin
@@ -56,6 +86,7 @@ GENERAL RULES:
 - Applications are online only via UOR portal using CNIC or NADRA B-Form
 - Merit lists displayed on departmental notice boards and UOR portal
 - Hostel available for students outside District Mandi Bahauddin
+
 FEE STRUCTURE (Fall 2025):
 - Admission Fee: Rs. 2,500
 - Registration Fee: Rs. 2,000
@@ -66,25 +97,31 @@ FEE STRUCTURE (Fall 2025):
 - Total Semester Dues: Rs. 37,000 (Excluding Transport Charges)
 - Total Grand Charges (First Semester only): Rs. 48,500
 
-If you don't know something, say 'Please contact the admissions office at 0370-1834828.'
+If you don't know something, say 'Please contact the admissions office at 0370-1834828.or
+Address: 13-km Mandi-Sarai Alamgir Road, Rasul, District Mandi Bahauddin
+- WhatsApp: 0370-1834828
+- Email: admission@putrasul.edu.pk
+- Portal: https://putrasul.edu.pk
 """
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+
 if prompt := st.chat_input("Ask about admissions..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-        with st.chat_message("assistant"):
-         response = client.chat.completions.create(
+
+    with st.chat_message("assistant"):
+        response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
         )
         reply = response.choices[0].message.content
         st.markdown(reply)
 
-    st.session_state.messages.append({"role": "assistant", "content": reply})            
-
-
+    st.session_state.messages.append({"role": "assistant", "content": reply})
