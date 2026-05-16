@@ -1,33 +1,8 @@
 import streamlit as st
 import os
 from groq import Groq
-import requests
-from bs4 import BeautifulSoup
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-def scrape_uor_website():
-    pages = [
-        "https://uorm.edu.pk/",
-        "https://uorm.edu.pk/admissions/",
-        "https://uorm.edu.pk/fee-structure/",
-    ]
-    all_text = ""
-    for url in pages:
-        try:
-            page = requests.get(url, timeout=10)
-            soup = BeautifulSoup(page.content, "html.parser")
-            text = soup.get_text()
-            clean_text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
-            all_text += f"\n\n--- Data from {url} ---\n{clean_text}"
-        except:
-            pass
-    # trim to avoid token limit
-    return all_text[:3000]
-
-if "website_data" not in st.session_state:
-    with st.spinner("Loading official UOR data..."):
-        st.session_state.website_data = scrape_uor_website()
 
 st.set_page_config(page_title="UOR Admission Assistant", page_icon="🎓")
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -36,11 +11,8 @@ with col2:
 
 st.title("🎓UOR Admission Assistant")
 
-SYSTEM_PROMPT = f"""You are a helpful admission assistant for University of Rasul (UOR), Mandi Bahauddin.
+SYSTEM_PROMPT = """You are a helpful admission assistant for University of Rasul (UOR), Mandi Bahauddin.
 Answer students' questions based on this official information only:
-
-LIVE WEBSITE DATA:
-{st.session_state.website_data}
 
 CONTACT:
 - Address: 13-km Mandi-Sarai Alamgir Road, Rasul, District Mandi Bahauddin
@@ -95,11 +67,10 @@ FEE STRUCTURE (Fall 2025):
 - Total Semester Dues: Rs. 37,000 (Excluding Transport Charges)
 - Total Grand Charges (First Semester only): Rs. 48,500
 
-If you don't know something, say 'Please contact the admissions office at 0370-1834828.or
-Address: 13-km Mandi-Sarai Alamgir Road, Rasul, District Mandi Bahauddin
+If you don't know something, say 'Please contact the admissions office:
 - WhatsApp: 0370-1834828
 - Email: admission@putrasul.edu.pk
-- Portal: https://putrasul.edu.pk
+- Portal: https://putrasul.edu.pk'
 """
 
 if "messages" not in st.session_state:
@@ -116,7 +87,7 @@ if prompt := st.chat_input("Ask about admissions..."):
 
     with st.chat_message("assistant"):
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
         )
         reply = response.choices[0].message.content
